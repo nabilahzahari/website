@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal CVI & MSP Kawasan Kuantan - Visualisasi Geospasial Pesisir Pantai</title>
+    
+    <!-- Google Fonts: Outfit & Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Leaflet CSS (Local with CDN fallback) -->
+    <link rel="stylesheet" href="leaflet.css" onerror="this.onerror=null;this.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';">
+    
+    <!-- Custom Style CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Panel (Glassmorphic Dashboard) -->
+        <aside class="sidebar">
+            <header class="sidebar-header">
+                <div class="header-logo-row">
+                    <div class="logo">
+                        <i class="fa-solid fa-anchor logo-icon"></i>
+                        <h1>Kuantan<span>CVI-MSP</span></h1>
+                    </div>
+                    <button id="btn-theme-toggle" class="theme-toggle-btn" title="Tukar Tema Terang/Gelap">
+                        <i class="fa-solid fa-sun"></i>
+                    </button>
+                </div>
+                <p class="tagline">Portal Pemantauan Kerentanan Pantai & Spatial Marin</p>
+            </header>
+
+            <!-- Search Section -->
+            <section class="search-section">
+                <div class="search-box">
+                    <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                    <input type="text" id="search-input" placeholder="Cari Cherating, Balok, Sepat..." autocomplete="off">
+                    <div id="search-suggestions" class="search-suggestions-dropdown"></div>
+                </div>
+            </section>
+
+            <!-- Tab Navigation -->
+            <nav class="tabs-nav">
+                <button class="tab-btn active" data-tab="locations-tab">
+                    <i class="fa-solid fa-map-location-dot"></i> Pesisir Pantai
+                </button>
+                <button class="tab-btn" data-tab="sim-tab">
+                    <i class="fa-solid fa-calculator"></i> Kalkulator CVI
+                </button>
+                <button class="tab-btn" data-tab="reports-tab">
+                    <i class="fa-solid fa-bullhorn"></i> Aduan Awam
+                </button>
+            </nav>
+
+            <!-- Scrollable Content Panels -->
+            <div class="sidebar-content">
+                <!-- Panel 1: Locations List -->
+                <div class="tab-panel active" id="locations-tab">
+                    <!-- Layer Toggle Options -->
+                    <div class="layer-control-container">
+                        <span class="control-label">Mod Visualisasi:</span>
+                        <div class="toggle-buttons">
+                            <button id="btn-cvi-layer" class="toggle-btn active">
+                                <i class="fa-solid fa-triangle-exclamation"></i> Indeks Kerentanan (CVI)
+                            </button>
+                            <button id="btn-msp-layer" class="toggle-btn">
+                                <i class="fa-solid fa-compass"></i> Zon Spatial Marin (MSP)
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="stats-counter">
+                        <span>Menunjukkan <strong id="location-count">0</strong> lokasi pesisir</span>
+                    </div>
+
+                    <div class="locations-list" id="locations-list">
+                        <!-- Cards will be dynamically inserted here via JS -->
+                    </div>
+                </div>
+
+                <!-- Panel 2: CVI Calculator Simulation -->
+                <div class="tab-panel" id="sim-tab">
+                    <div class="info-alert">
+                        <i class="fa-solid fa-info-circle"></i>
+                        <p>Simulasikan skor CVI di lokasi pilihan dengan menyesuaikan faktor fizikal di bawah.</p>
+                    </div>
+
+                    <div class="calculator-form">
+                        <div class="form-group">
+                            <label>Geomorfologi Pantai</label>
+                            <select id="calc-geom">
+                                <option value="1">Sangat Kebal (Cth: Batuan Rocky)</option>
+                                <option value="2">Kebal (Cth: Batuan Sedimen Kasar)</option>
+                                <option value="3">Sederhana (Cth: Pantai Berpasir Kerikil)</option>
+                                <option value="4">Rentan (Cth: Pantai Pasir Halus)</option>
+                                <option value="5" selected>Sangat Rentan (Cth: Lumpur, Muara, Bakau Terhakis)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Kadar Perubahan Garis Pantai (Shoreline Change)</label>
+                            <div class="slider-wrapper">
+                                <input type="range" id="calc-erosion" min="1" max="5" step="1" value="4">
+                                <div class="slider-labels">
+                                    <span>Akresi (+m/thn)</span>
+                                    <span>Hakisan Kuat (-m/thn)</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Kecerunan Pantai (Coastal Slope)</label>
+                            <select id="calc-slope">
+                                <option value="1">Curam (> 1.5%)</option>
+                                <option value="2">Agak Curam (0.9% - 1.5%)</option>
+                                <option value="3">Sederhana (0.6% - 0.9%)</option>
+                                <option value="4">Landai (0.3% - 0.6%)</option>
+                                <option value="5" selected>Sangat Landai (< 0.3%)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Purata Ketinggian Ombak (Wave Height)</label>
+                            <div class="slider-wrapper">
+                                <input type="range" id="calc-wave" min="1" max="5" step="1" value="3">
+                                <div class="slider-labels">
+                                    <span>Kecil (< 0.5m)</span>
+                                    <span>Besar (> 1.2m)</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button id="btn-calculate-cvi" class="btn-primary">
+                            <i class="fa-solid fa-rotate"></i> Hitung Indeks Kerentanan
+                        </button>
+                    </div>
+
+                    <!-- Calculator Result Card -->
+                    <div class="calculator-result-card" id="calc-result" style="display: none;">
+                        <h3>Keputusan Simulasi</h3>
+                        <div class="cvi-badge-large" id="calc-result-badge">---</div>
+                        <div class="result-details">
+                            <p>Skor CVI: <strong id="calc-score-val">0.0</strong></p>
+                            <p id="calc-result-desc">Faktor geomorfologi dan kecerunan pantai yang landai menyumbang kepada tahap kerentanan ini.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel 3: Crowdsourced Public Reports -->
+                <div class="tab-panel" id="reports-tab">
+                    <div class="info-alert reports-alert">
+                        <i class="fa-solid fa-bullhorn animate-pulse"></i>
+                        <p><strong>Bantu Kami!</strong> Klik di mana-mana titik pesisir pantai pada peta untuk melaporkan kes hakisan atau limpahan air pasang secara langsung.</p>
+                    </div>
+
+                    <div class="reports-header-section">
+                        <h3>Laporan Terkini Awam (<span id="report-count">0</span>)</h3>
+                    </div>
+
+                    <div class="reports-list" id="reports-list">
+                        <!-- Community reports will be dynamically listed here -->
+                        <div class="empty-reports">
+                            <i class="fa-solid fa-clipboard-list"></i>
+                            <p>Tiada laporan komuniti aktif. Klik pada peta untuk mula melaporkan.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sidebar toggle handle button -->
+            <button id="btn-sidebar-toggle" class="sidebar-toggle-btn" title="Tutup/Buka Panel Kawalan">
+                <i class="fa-solid fa-chevron-left"></i>
+            </button>
+        </aside>
+
+        <!-- Main Map Area -->
+        <main class="map-area">
+            <!-- Floating Live Status HUD -->
+            <div class="live-hud-container">
+                <div class="live-badge">
+                    <span class="pulse-dot"></span>
+                    <span>KUANTAN LIVE STATUS</span>
+                </div>
+                <div class="hud-metrics">
+                    <div class="metric">
+                        <i class="fa-solid fa-water"></i>
+                        <div class="metric-info">
+                            <span class="label">Pasang Surut</span>
+                            <span class="value" id="hud-tide">1.45m</span>
+                        </div>
+                    </div>
+                    <div class="metric">
+                        <i class="fa-solid fa-wave-square"></i>
+                        <div class="metric-info">
+                            <span class="label">Tinggi Ombak</span>
+                            <span class="value" id="hud-wave">0.72m</span>
+                        </div>
+                    </div>
+                    <div class="metric">
+                        <i class="fa-solid fa-wind"></i>
+                        <div class="metric-info">
+                            <span class="label">Kelajuan Angin</span>
+                            <span class="value" id="hud-wind">14 knot</span>
+                        </div>
+                    </div>
+                    <div class="metric status-green" id="hud-alert-badge">
+                        <i class="fa-solid fa-shield-halved"></i>
+                        <div class="metric-info">
+                            <span class="label">Tahap Amaran</span>
+                            <span class="value" id="hud-alert-text">Selamat</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- The Map Container -->
+            <div id="map"></div>
+
+            <!-- Floating Legend HUD (Bottom Left) -->
+            <div class="floating-legend" id="map-legend">
+                <h4 id="legend-title">Petunjuk CVI</h4>
+                <div id="legend-content" class="legend-content">
+                    <!-- Legend contents will be updated dynamically via JS -->
+                </div>
+            </div>
+
+            <!-- Floating Basemap Selector HUD (Bottom Right, above tutorial) -->
+            <div class="floating-basemap-selector" id="basemap-selector">
+                <button class="basemap-btn active" data-basemap="osm">
+                    <i class="fa-solid fa-map"></i> OSM
+                </button>
+                <button class="basemap-btn" data-basemap="satellite">
+                    <i class="fa-solid fa-globe"></i> Satelit
+                </button>
+                <button class="basemap-btn" data-basemap="portal">
+                    <i class="fa-solid fa-circle-half-stroke"></i> Portal
+                </button>
+            </div>
+
+            <!-- Floating Tutorial Banner (Bottom Right) -->
+            <div class="floating-tutorial">
+                <i class="fa-solid fa-circle-info"></i>
+                <div class="tutorial-text">
+                    <h4>Arahan Pengguna</h4>
+                    <p>Klik pada mana-mana garisan pantai untuk melaporkan hakisan pesisir atau limpahan air pasang.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Crowdsourced Report Submission Modal (Glassmorphic) -->
+    <div class="modal-overlay" id="report-modal">
+        <div class="modal-card">
+            <header class="modal-header">
+                <h2><i class="fa-solid fa-circle-exclamation text-cyan"></i> Laporan Hakisan & Banjir Pantai</h2>
+                <button class="close-modal-btn" id="btn-close-modal"><i class="fa-solid fa-xmark"></i></button>
+            </header>
+            <form id="report-form" class="modal-form">
+                <div class="coordinates-display">
+                    <i class="fa-solid fa-location-crosshairs"></i>
+                    <span>Koordinat Titik: <strong id="modal-coords">4.3312, 102.1242</strong></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="report-name">Nama Pengadu</label>
+                    <input type="text" id="report-name" placeholder="Masukkan nama anda" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="report-type">Jenis Kejadian</label>
+                    <select id="report-type" required>
+                        <option value="Hakisan Pantai">Hakisan Tebing / Pantai Berpasir</option>
+                        <option value="Banjir Limpahan Air Pasang">Limpahan Air Pasang (Banjir Ruap)</option>
+                        <option value="Kerosakan Hutan Bakau">Kerosakan/Kemusnahan Hutan Bakau</option>
+                        <option value="Keruntuhan Struktur Penahan">Benteng / Struktur Kawalan Hakisan Runtuh</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="report-severity">Tahap Keterukan</label>
+                    <div class="severity-options">
+                        <label class="sev-label">
+                            <input type="radio" name="severity" value="Rendah" checked>
+                            <span class="sev-box bg-green">Rendah</span>
+                        </label>
+                        <label class="sev-label">
+                            <input type="radio" name="severity" value="Sederhana">
+                            <span class="sev-box bg-orange">Sederhana</span>
+                        </label>
+                        <label class="sev-label">
+                            <input type="radio" name="severity" value="Tinggi">
+                            <span class="sev-box bg-red">Tinggi</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="report-desc">Penerangan Kejadian</label>
+                    <textarea id="report-desc" placeholder="Jelaskan secara ringkas keadaan di lokasi kejadian (cth: Hakisan tebing setinggi 1 meter berdekatan kedai makan...)" rows="3" required></textarea>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" id="btn-cancel-report">Batal</button>
+                    <button type="submit" class="btn-primary">Hantar Aduan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Leaflet JS (Local with CDN fallback) -->
+    <script src="leaflet.js"></script>
+    <script>
+        if (typeof L === 'undefined') {
+            var s = document.createElement('script');
+            s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+            document.head.appendChild(s);
+        }
+    </script>
+    <!-- Custom Application JS -->
+    <script src="app.js"></script>
+</body>
+</html>
